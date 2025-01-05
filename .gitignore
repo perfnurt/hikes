@@ -1,0 +1,5 @@
+*.gpx
+*.json
+# Local copy of https://github.com/mpetazzoni/leaflet-gpx/blob/main/gpx.js
+# Refer to dist when it has been updated with my PR
+gpx.js

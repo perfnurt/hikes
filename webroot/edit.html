@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vandringsinfo</title>
+    <script src="/lib/dom.js"></script>
+    <script src="hike_info.js"></script>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        td {
+            vertical-align: top;
+        }    
+        .rate-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .rate-label {
+            margin-right: 5px;
+        }        
+        .ok-btn {
+                    background-color: #4CAF50;
+                    color: white;
+                }
+        .cancel-btn {
+            background-color: #f44336;
+            color: white;
+            margin-left: 10px;
+        }        
+    </style>
+</head>
+<body onload="setup_edit()">
+    <table id="edit_table">
+        <tr>
+            <td>Namn</td><td>:</td><td><input type="text" id="h_name"></td>
+        </tr><tr>
+            <td>Google Maps</td><td>:</td><td id="h_map_link"></td>
+        </tr><tr>
+            <td>Avstånd</td><td>:</td><td id="h_dist"></td>
+        </tr><tr>
+            <td>Längd</td><td>:</td><td><input type="text" id="h_length"> km</td>
+        </tr><tr>
+            <td>Betyg</td><td>:</td><td class="rate-container">
+                <label><input type="radio" name="rate" value="1"> 1</label>
+                <label><input type="radio" name="rate" value="2"> 2</label>
+                <label><input type="radio" name="rate" value="3"> 3</label>
+                <label><input type="radio" name="rate" value="4"> 4</label>
+                <label><input type="radio" name="rate" value="5"> 5</label>                
+            </tr><tr>
+                <td>Kommentar</td><td>:</td><td>
+                    <textarea id="h_comment" cols="60" rows="10"></textarea>
+                </td>
+            </tr>
+    </table>
+    <div>
+        <button class="ok-btn" onclick="save_edit()">Spara</button>
+        <button class="cancel-btn" onclick="window.close()">Avbryt</button>
+    </div>        
+</body>
+</html>
