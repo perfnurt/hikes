@@ -1,3 +1,14 @@
+// This file, hike_info.js, is responsible for managing and displaying information about various hikes.
+// It includes functionality for sorting hikes, displaying them in a table, and interacting with a map.
+// The main features include:
+// - Sorting hikes by name, distance, rating, or length.
+// - Displaying hikes in a table with sortable columns.
+// - Highlighting hikes on the map and in the table when hovered over.
+// - Selecting hikes for detailed information and editing.
+// - Loading hike data from a JSON file and GPX file.
+// - Providing an interface for editing hike details in a separate window.
+// - Saving hike information back to the server.
+
 // highlighted reflects the highlighted hike, hovered over in map or table.
 var highlighted;
 
@@ -12,7 +23,8 @@ const SORT_BY_NAME = 0;
 const SORT_BY_DIST = 1;
 const SORT_BY_RATE = 2;
 const SORT_BY_LENGTH = 3;
-var sort_order = SORT_BY_DIST; // default
+var sort_by;
+var toggle_sort = false;
 
 const sort_icons = ["▲", "▼"];
 const sort_asc = 0;
@@ -25,7 +37,7 @@ const table_heads =  [
         "sort_order" : sort_asc,
     },
     {
-        "name" : "Avstånd",
+        "name" : "Avstånd (km)",
         "sort_ix" : SORT_BY_DIST,
         "sort_order" : sort_asc,
     },
@@ -35,72 +47,66 @@ const table_heads =  [
         "sort_order" : sort_desc,
     },
     {
-        "name" : "Längd",
+        "name" : "Längd (km)",
         "sort_ix" : SORT_BY_LENGTH,
         "sort_order" : sort_desc,
     },
 ];
 
-function sort_hikes(sort_order_) {
-    sort_order = sort_order_;
+function sort_hikes(sort_by_) {
+    if (sort_by_ === sort_by) {
+        toggle_sort = !toggle_sort;
+    } else {
+        toggle_sort = false;
+    }
+    sort_by = sort_by_;
     hikes.sort((a, b) => {
-        switch(sort_order){
+        // Utility function to compare two values, taking toggle_sort into account.
+        const compare = (x, y) => toggle_sort ? y - x : x - y;
+        switch(sort_by){
             case SORT_BY_NAME:
-                // Example name "MS19-Agusa"
-                // Split name into left part, integer, and right part and sort them separately
-                // So that the integer part is sorted numerically.
-                // Also ignore spaces and dashes in the name when comparing.
-                const parseName = (name) => {
-                    // Normalize name by removing dashes and spaces and lowercasing
-                    const normalized = name.replace(/[-\s]/g, "").toLowerCase();
-
-                    // Match components: left part, integer, and right part
-                    const match = normalized.match(/^([a-zA-Z]*)(\d+)(.*)$/);
-                    if (!match) return [normalized, 0, ""]; // If no match, return normalized as left part
-
-                    const [, left, num, right] = match;
-                    return [left, parseInt(num, 10), right];
+                // Example: "MS11 - Klintaskogen" => ["MS", 11, "Klintaskogen"]
+                // Sort by left part, then number, then right part
+                const parseName = name => {
+                    const match = name.replace(/[-\s]/g, "").toLowerCase().match(/^([a-zA-Z]*)(\d+)(.*)$/);
+                    return match ? [match[1], parseInt(match[2], 10), match[3]] : [name, 0, ""];
                 };
-
-              // Parse both names
-              const [leftA, numA, rightA] = parseName(a.name);
-              const [leftB, numB, rightB] = parseName(b.name);
-
-              // Compare left parts alphabetically
-              if (leftA !== leftB) return leftA.localeCompare(leftB);
-
-              // Compare numeric parts numerically
-              if (numA !== numB) return numA - numB;
-
-              // Compare right parts alphabetically
-              return rightA.localeCompare(rightB);
+                const [leftA, numA, rightA] = parseName(a.name);
+                const [leftB, numB, rightB] = parseName(b.name);
+                if (leftA !== leftB) return compare(leftA.localeCompare(leftB), leftB.localeCompare(leftA));
+                if (numA !== numB) return compare(numA, numB);
+                return compare(rightA.localeCompare(rightB), rightB.localeCompare(rightA));
             case SORT_BY_DIST:
-                return  a.dist - b.dist;
+                return compare(a.dist, b.dist);
             case SORT_BY_RATE:
-                return b.info.rate - a.info.rate;
+                return compare(b.info.rate, a.info.rate);
             case SORT_BY_LENGTH:
-                let lenA = a.info.hike_length !== undefined ? parseFloat(a.info.hike_length) : 0;
-                let lenB = b.info.hike_length !== undefined ? parseFloat(b.info.hike_length) : 0;
-                if (lenA > lenB) return -1;
-                if (lenA < lenB) return 1;
-                return 0;
-            }
+                const lenA = parseFloat(a.info.hike_length ? a.info.hike_length : 0);
+                const lenB = parseFloat(b.info.hike_length ? b.info.hike_length : 0);
+                return compare(lenB, lenA);
+        }
     });
 }
 
 var home_name;
 function show_hikes_table() {
     let table = $clear($("track-table"));
+    // Headers
     let tr = $add(table, "tr");
-    $add(tr, "th", { "onclick":"sortTable(SORT_BY_NAME)", "id" : "head_0"});
-    $add(tr, "th", { "onclick":"sortTable(SORT_BY_DIST)", "id" : "head_1"});
-    $add(tr, "th", { "onclick":"sortTable(SORT_BY_RATE)", "id" : "head_2"});
-    $add(tr, "th", { "onclick":"sortTable(SORT_BY_LENGTH)", "id" : "head_3"});
     for (let i = 0; i < table_heads.length; i++) {
-        const ch = i == sort_order ? sort_icons[table_heads[i].sort_order] : "&nbsp;";
+        $add(tr, "th", { "onclick":"sortTable(" + table_heads[i].sort_ix + ")", "id" : "head_" + i });
+
+        let sort_order = table_heads[i].sort_order;
+        // If toggle_sort, invert the sort order
+        if (toggle_sort) {
+            sort_order = sort_order == sort_asc ? sort_desc : sort_asc;
+        }
+
+        const ch = i == sort_by ? sort_icons[sort_order] : "&nbsp;";
         let th = $("head_" + i);
         th.innerHTML = table_heads[i].name + " " + ch;
     }
+    // Rows
     for (let h of hikes) {
         let tr = $add(table, "tr")
         tr.id = "tr_" + h.name;
@@ -142,6 +148,8 @@ function setup_map() {
                 endIcon : false, // These would overwrite the start marker
             },
         })
+        // leaflet-gpx events, see https://github.com/mpetazzoni/leaflet-gpx?tab=readme-ov-file#events
+        // line was added to the event in this pr, https://github.com/mpetazzoni/leaflet-gpx/pull/169, not yet officially released.
         .on("addpoint", e => {
             let trk = e.line;
             let name = trk.getElementsByTagName('name')[0].textContent;
@@ -152,7 +160,6 @@ function setup_map() {
 
             // Fit the map bounds to the GPX tracks
             map.fitBounds(gpx.getBounds());
-
 
             let newHikes = [];
             const homePos = hike_info["home"]["latlng"];
@@ -198,7 +205,7 @@ function setup_map() {
                     console.log("save_hikes : ", res);
                 })
             }
-            show_hikes_table();
+            sortTable(SORT_BY_DIST);
         })
         .on('click', e => { handle_click(e.originalEvent); })
         .addTo(map);
