@@ -10,4 +10,5 @@ This is a web app that
 <img src="screenshot.png">
 
 # Dependencies
-It uses [leaflet](https://leafletjs.com/) and [leaflet-gpx](https://github.com/mpetazzoni/leaflet-gpx) for resolving map and .gpx file info.
+* [leaflet](https://leafletjs.com/) and [leaflet-gpx](https://github.com/mpetazzoni/leaflet-gpx) are used for resolving .gpx file info and displayinbg map.
+* A `source.gpx` file assumed to co-exist in the webroot folder. Obtaining one is outside the scope of this project.
