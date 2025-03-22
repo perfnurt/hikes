@@ -129,6 +129,17 @@ function setup_map() {
             $add($("links"), "span").textContent = " ";
         }
 
+        const keys = Object.keys(hike_info["hikes"])
+        let total_hikes = keys.length;
+        let total_visited = 0;
+        for (let k of keys) {
+            let h = hike_info["hikes"][k];
+            if (h.rate) {
+                total_visited++;
+            }
+        }
+        $add($("links"), "span").textContent = `${total_hikes} vandringar, varav ${total_visited}  besökta (betygsatta) `;
+
         home_name = hike_info["home"]["name"]
         var map = L.map('map');
 
@@ -206,6 +217,8 @@ function setup_map() {
                 })
             }
             sortTable(SORT_BY_DIST);
+
+
         })
         .on('click', e => { handle_click(e.originalEvent); })
         .addTo(map);
