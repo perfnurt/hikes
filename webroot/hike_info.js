@@ -113,7 +113,7 @@ function show_hikes_table() {
     // Rows
     for (let h of hikes) {
         // Filter
-        if (filter.length > 0 && h.name.toLowerCase().indexOf(filter) === -1) {
+        if (filter.length > 0 && h.info.display_name.toLowerCase().indexOf(filter) === -1) {
             continue;
         }
 
