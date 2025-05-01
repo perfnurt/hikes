@@ -51,12 +51,26 @@
         .not_visited {
             filter:  hue-rotate(120deg) opacity(60%);
         }
+        #filter-box {
+            position: absolute;
+            top: 0px;
+            right: 10px;
+            background-color: white;
+            padding: 0px;
+            border-radius: 1px;
+            box-shadow: 0;
+        }
 
     </style>
 </head>
 <body onload="setup_map()">
-    <div id="links">
+    <div id="top-bar">
     </div>
+    <!-- Filter box to the right -->
+    <div id="filter-box">
+        <input type="text" id="filter" onkeyup="show_hikes_table()" placeholder="Filter ...">
+    </div>
+
     <div id="container">
         <div id="map"></div>
         <div id="table-container">

@@ -90,6 +90,10 @@ function sort_hikes(sort_by_) {
 
 var home_name;
 function show_hikes_table() {
+
+    // text input with id "filter" holds the filter string
+    let filter = $("filter").value.toLowerCase();
+
     let table = $clear($("track-table"));
     // Headers
     let tr = $add(table, "tr");
@@ -108,6 +112,11 @@ function show_hikes_table() {
     }
     // Rows
     for (let h of hikes) {
+        // Filter
+        if (filter.length > 0 && h.name.toLowerCase().indexOf(filter) === -1) {
+            continue;
+        }
+
         let tr = $add(table, "tr")
         tr.id = "tr_" + h.name;
         $add(tr, "td").textContent = h.info ? h.info.display_name : h.name;
@@ -124,9 +133,9 @@ function show_hikes_table() {
 function setup_map() {
     get("hike_info.json", hike_info => {
         for(let l of hike_info["links"]) {
-            $add($("links"), "a", { "href" : l.href, "target":"_blank"}).textContent = l.name;
-            // Add space between links
-            $add($("links"), "span").textContent = " ";
+            $add($("top-bar"), "a", { "href" : l.href, "target":"_blank"}).textContent = l.name;
+            // Add space between top-bar elements
+            $add($("top-bar"), "span").textContent = " ";
         }
 
         const keys = Object.keys(hike_info["hikes"])
@@ -138,7 +147,7 @@ function setup_map() {
                 total_visited++;
             }
         }
-        $add($("links"), "span").textContent = `${total_hikes} vandringar, varav ${total_visited}  besökta (betygsatta) `;
+        $add($("top-bar"), "span").textContent = ` ${total_hikes} vandringar, varav ${total_visited}  besökta (betygsatta). `;
 
         home_name = hike_info["home"]["name"]
         var map = L.map('map');
@@ -329,3 +338,4 @@ function latLngToDMS(lat, lng) {
     const lngDMS = `${toDMS(lng)}${ew}`;
     return `${latDMS} ${lngDMS}`;
 }
+
