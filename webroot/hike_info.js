@@ -162,8 +162,8 @@ function updated_visited_icons(map) {
 var count_to_load = 0;
 var loaded_count = 0;
 
-function load_gpx_file(map, home, gpxFile, hike_info, options) {
-    const homePos = home["latlng"];
+function load_gpx_file(map, home_pos, gpxFile, hike_info, options) {
+
 
     let layer_group = new L.GPX(gpxFile, options);
     // leaflet-gpx events, see https://github.com/mpetazzoni/leaflet-gpx?tab=readme-ov-file#events
@@ -201,7 +201,7 @@ function load_gpx_file(map, home, gpxFile, hike_info, options) {
                     rate : 0,
                     comment : "",
                 },
-                dist: (e.line.getLatLngs()[0].distanceTo(homePos) / 1000).toFixed(1),
+                dist: (e.line.getLatLngs()[0].distanceTo(home_pos) / 1000).toFixed(1),
                 latlng: e.line.getLatLngs()[0], // Use the first point as the marker position
                 lines : [e.line], // Store the line in the info for later use
                 link: link, // Link to the hike, if available. Displayed in the edit page.
@@ -273,6 +273,17 @@ function setup() {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
+            const home_pos = config["home"]["latlng"];
+            L.circle(home_pos, 
+                {
+                    radius:500,
+                    color : 'black',
+                    fillColor: 'lightblue',
+                    fillOpacity: 0.8,
+                    title: "Hem",
+                }
+            ).addTo(map);
+
             for (let file_config of config["gpxFiles"]) {
                 let filename = file_config["filename"];
                 let options = file_config["options"];
@@ -282,7 +293,7 @@ function setup() {
                 let checkbox = $add(label, "input", { "type": "checkbox", "checked": "true" });
                 label.appendChild($text(file_config["display_name"]));
 
-                let layer_group = load_gpx_file(map, home, filename, hike_info, options);
+                let layer_group = load_gpx_file(map, home_pos, filename, hike_info, options);
 
                 checkbox.addEventListener('change', function() {
                     hide_show_hikes(layer_group.getLayers(), !this.checked);
@@ -334,10 +345,6 @@ function handle_click(e) {
 
 function save_hike(h, f) {
     post("server.php", {"op" : "save_hike_info", "name": h.name, "hike_info" : h.info}, f);
-}
-
-function save_hikes(hikes, f) {
-    post("server.php", {"op" : "save_hikes_info", "hikes":  hikes}, f);
 }
 
 function save_selected() {
