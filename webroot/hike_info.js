@@ -112,7 +112,9 @@ function show_hikes_table() {
     }
     // Rows
     for (let h of hikes) {
-        // Filter
+        if (h.hidden) {
+            continue;
+        }
         if (filter.length > 0 && h.info.display_name.toLowerCase().indexOf(filter) === -1) {
             continue;
         }
@@ -145,23 +147,39 @@ function highlight_from_map(h) {
     row.scrollIntoView({ behavior: 'instant', block: 'center' });
 }
 
+function updated_visited_icons(map) {
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker) {
+            let name = layer.options.title;
+            let h = hikes.find(h => h.name === name);
+            if (!h.info.rate) {
+                layer._icon.classList.add("not_visited");
+            }
+        }
+    });
+    }
+
 var count_to_load = 0;
 var loaded_count = 0;
 
 function load_gpx_file(map, home, gpxFile, hike_info, options) {
     const homePos = home["latlng"];
 
-    new L.GPX(gpxFile, options)
+    let layer_group = new L.GPX(gpxFile, options);
     // leaflet-gpx events, see https://github.com/mpetazzoni/leaflet-gpx?tab=readme-ov-file#events
     // line was added to the event in this pr, https://github.com/mpetazzoni/leaflet-gpx/pull/169, not yet officially released.
-    .on("addpoint", e => {
+    layer_group.on("addpoint", e => {
         let name = e.line.getElementsByTagName('name')[0].textContent;
         let h = hikes.find(h => h.name === name);
+        h.marker = e.point;
 
         e.point.on('mouseover', function (mouseEvent) { highlight_from_map(h); });
         e.point.on('mouseout', function (mouseEvent) { clear_highlighted(); });
 
         e.point.options.title = name
+
+        layer_group.addLayer(e.point);
+
     })
     .on("addline", e => {
         let name = e.element.getElementsByTagName('name')[0].textContent;
@@ -171,6 +189,7 @@ function load_gpx_file(map, home, gpxFile, hike_info, options) {
             link = link.getAttribute('href');
         }
         let h = hikes.find(h => h.name === name);
+        e.line.options.title = name
         if (h) { // For then the trk has multiple trkseg
             h.lines.push(e.line); // Add the line to the existing hike
             h.computed_hike_length += compute_polyline_length(e.line); // Update the computed length of the hike
@@ -187,6 +206,7 @@ function load_gpx_file(map, home, gpxFile, hike_info, options) {
                 lines : [e.line], // Store the line in the info for later use
                 link: link, // Link to the hike, if available. Displayed in the edit page.
                 computed_hike_length: compute_polyline_length(e.line), // Computed the length of the hike. Overridden if having a info.hike_length.
+                hidden: false, // Hidden from the table by default
             }
 
             hikes.push(h);
@@ -194,48 +214,42 @@ function load_gpx_file(map, home, gpxFile, hike_info, options) {
 
         e.line.on('mouseover', function (mouseEvent) { highlight_from_map(h);  });
         e.line.on('mouseout', function (mouseEvent) { clear_highlighted(); });
+        h.hidden = false;
+        layer_group.addLayer(e.line);
+
     })
     .on('loaded', function(e) {
         const gpx = e.target;
-
-        // Fit the map bounds to the GPX tracks
         map.fitBounds(gpx.getBounds());
-
-        // let newHikes = [];
-
-        // For each marker/track
-        // * Create a hike element in the hikes collection
-        // * Add eventlisteners for mouse interaction on map
-        map.eachLayer(marker => {
-            if (marker instanceof L.Marker) {
-                let name = marker.options.title;
-                let h = hikes.find(h => h.name === name);
-                h.marker = marker;
-
-                // hike UI /interaction
-                if (!h.info.rate) {
-                    marker._icon.classList.add("not_visited");
-                }
-            }
-        });
 
         loaded_count += 1;
 
         // If all files are loaded ...
         if (loaded_count == count_to_load) {
-            console.log("All is loaded")
+            updated_visited_icons(map);
             sortTable(SORT_BY_DIST);
 
             const total_hikes = hikes.length;
             const total_visited = hikes.filter(h => h.info.rate).length;
 
-            $add($("top-bar"), "span").textContent = ` ${total_hikes} vandringar/leder, varav ${total_visited}  besökta (betygsatta). `;
+            $("hike-summary").textContent = ` ${total_hikes} vandringar/leder, varav ${total_visited}  besökta (betygsatta). `;
         }
-
-
     })
     .on('click', e => { handle_click(e.originalEvent); })
     .addTo(map);
+
+    return layer_group;
+}
+function hide_show_hikes(layers, hide) {
+    for (let layer of layers) {
+        if (layer instanceof L.Polyline) {
+            let h = hikes.find(h => h.name === layer.options.title);
+            if (h) {
+                h.hidden = hide;
+            }
+        }
+    }
+    show_hikes_table();
 }
 
 function setup() {
@@ -262,7 +276,24 @@ function setup() {
             for (let file_config of config["gpxFiles"]) {
                 let filename = file_config["filename"];
                 let options = file_config["options"];
-                load_gpx_file(map, home, filename, hike_info, options);
+
+                // hike sets with checkboxes. When unchecked the layer_group is removed from the map, when checked it is added to the map.
+                let label = $add($("hike-sets"), "label");
+                let checkbox = $add(label, "input", { "type": "checkbox", "checked": "true" });
+                label.appendChild($text(file_config["display_name"]));
+
+                let layer_group = load_gpx_file(map, home, filename, hike_info, options);
+
+                checkbox.addEventListener('change', function() {
+                    hide_show_hikes(layer_group.getLayers(), !this.checked);
+                    if (this.checked) {
+                        layer_group.addTo(map);
+                        updated_visited_icons(map);
+                    } else {
+                        layer_group.remove();
+                    }
+                });
+
             }
         })
     });
