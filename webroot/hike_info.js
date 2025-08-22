@@ -15,7 +15,7 @@ var highlighted;
 // selected reflects the hike selected for showing info / editing.
 var selected;
 
-// The hikes collection holds hike elements tying the hike info and layers/markers together.
+// The hikes collection holds hike elements tying the hike info and layers/markers/lines together.
 // Order of the elements determines the order displayed in the table.
 var hikes = []
 
@@ -81,14 +81,14 @@ function sort_hikes(sort_by_) {
             case SORT_BY_RATE:
                 return compare(b.info.rate, a.info.rate);
             case SORT_BY_LENGTH:
-                const lenA = parseFloat(a.info.hike_length ? a.info.hike_length : 0);
-                const lenB = parseFloat(b.info.hike_length ? b.info.hike_length : 0);
+
+                const lenA = parseFloat(a.info.hike_length ? a.info.hike_length : a.computed_hike_length);
+                const lenB = parseFloat(b.info.hike_length ? b.info.hike_length : b.computed_hike_length);
                 return compare(lenB, lenA);
         }
     });
 }
 
-var home_name;
 function show_hikes_table() {
 
     // text input with id "filter" holds the filter string
@@ -122,128 +122,169 @@ function show_hikes_table() {
         $add(tr, "td").textContent = h.info ? h.info.display_name : h.name;
         $add(tr, "td").textContent = h.dist;
         $add(tr, "td").textContent = h.info.rate ? h.info.rate : "";
-        $add(tr, "td").textContent = h.info.hike_length !== undefined ?  h.info.hike_length : "";
+        $add(tr, "td").textContent = h.info.hike_length ?  h.info.hike_length.toFixed(1) : (h.computed_hike_length ? h.computed_hike_length.toFixed(1) : "");
 
         tr.addEventListener('click', (e) => { handle_click(e); });
         tr.addEventListener('mouseover', () => { highlight(h); });
-        tr.addEventListener('mouseout', () => { clear_hightlighted(); });
+        tr.addEventListener('mouseout', () => { clear_highlighted(); });
     }
 }
 
-function setup_map() {
-    get("hike_info.json", hike_info => {
-        for(let l of hike_info["links"]) {
-            $add($("top-bar"), "a", { "href" : l.href, "target":"_blank"}).textContent = l.name;
-            // Add space between top-bar elements
-            $add($("top-bar"), "span").textContent = " ";
-        }
+function compute_polyline_length(line) {
+    // Compute the total length of the polyline in kilometers
+    let totalLength = 0;
+    const latlngs = line.getLatLngs();
+    for (let i = 0; i < latlngs.length - 1; i++) {
+        totalLength += latlngs[i].distanceTo(latlngs[i + 1]);
+    }
+    return (totalLength / 1000); // Return length in kilometers
+}
 
-        const keys = Object.keys(hike_info["hikes"])
-        let total_hikes = keys.length;
-        let total_visited = 0;
-        for (let k of keys) {
-            let h = hike_info["hikes"][k];
-            if (h.rate) {
-                total_visited++;
+function highlight_from_map(h) {
+    let row = highlight(h);
+    row.scrollIntoView({ behavior: 'instant', block: 'center' });
+}
+
+var count_to_load = 0;
+var loaded_count = 0;
+
+function load_gpx_file(map, home, gpxFile, hike_info, options) {
+    const homePos = home["latlng"];
+
+    new L.GPX(gpxFile, options)
+    // leaflet-gpx events, see https://github.com/mpetazzoni/leaflet-gpx?tab=readme-ov-file#events
+    // line was added to the event in this pr, https://github.com/mpetazzoni/leaflet-gpx/pull/169, not yet officially released.
+    .on("addpoint", e => {
+        let name = e.line.getElementsByTagName('name')[0].textContent;
+        let h = hikes.find(h => h.name === name);
+
+        e.point.on('mouseover', function (mouseEvent) { highlight_from_map(h); });
+        e.point.on('mouseout', function (mouseEvent) { clear_highlighted(); });
+
+        e.point.options.title = name
+    })
+    .on("addline", e => {
+        let name = e.element.getElementsByTagName('name')[0].textContent;
+        let link = e.element.getElementsByTagName('link')[0];
+        if (link) {
+            // Get link from the element's href attribute
+            link = link.getAttribute('href');
+        }
+        let h = hikes.find(h => h.name === name);
+        if (h) { // For then the trk has multiple trkseg
+            h.lines.push(e.line); // Add the line to the existing hike
+            h.computed_hike_length += compute_polyline_length(e.line); // Update the computed length of the hike
+        } else{
+            h = {
+                name: name,
+                info:name in hike_info ? hike_info[name] : { // Default info if not found in hike_info, all info values are editable by the user.
+                    display_name : name,
+                    rate : 0,
+                    comment : "",
+                },
+                dist: (e.line.getLatLngs()[0].distanceTo(homePos) / 1000).toFixed(1),
+                latlng: e.line.getLatLngs()[0], // Use the first point as the marker position
+                lines : [e.line], // Store the line in the info for later use
+                link: link, // Link to the hike, if available. Displayed in the edit page.
+                computed_hike_length: compute_polyline_length(e.line), // Computed the length of the hike. Overridden if having a info.hike_length.
             }
+
+            hikes.push(h);
         }
-        $add($("top-bar"), "span").textContent = ` ${total_hikes} vandringar, varav ${total_visited}  besökta (betygsatta). `;
 
-        home_name = hike_info["home"]["name"]
-        var map = L.map('map');
+        e.line.on('mouseover', function (mouseEvent) { highlight_from_map(h);  });
+        e.line.on('mouseout', function (mouseEvent) { clear_highlighted(); });
+    })
+    .on('loaded', function(e) {
+        const gpx = e.target;
 
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        // Fit the map bounds to the GPX tracks
+        map.fitBounds(gpx.getBounds());
 
-        // Load the .gpx file
-        const gpxFile = "source.gpx";
-        new L.GPX(gpxFile, {
-            async: true,
-            gpx_options : {
-                parseElements: ['track'], // Only get the trk elements from the gpx
-            },
-            markers : {
-                endIcon : false, // These would overwrite the start marker
-            },
-        })
-        // leaflet-gpx events, see https://github.com/mpetazzoni/leaflet-gpx?tab=readme-ov-file#events
-        // line was added to the event in this pr, https://github.com/mpetazzoni/leaflet-gpx/pull/169, not yet officially released.
-        .on("addpoint", e => {
-            let trk = e.line;
-            let name = trk.getElementsByTagName('name')[0].textContent;
-            e.point.options.title = name;
-        })
-        .on('loaded', function(e) {
-            const gpx = e.target;
+        // let newHikes = [];
 
-            // Fit the map bounds to the GPX tracks
-            map.fitBounds(gpx.getBounds());
+        // For each marker/track
+        // * Create a hike element in the hikes collection
+        // * Add eventlisteners for mouse interaction on map
+        map.eachLayer(marker => {
+            if (marker instanceof L.Marker) {
+                let name = marker.options.title;
+                let h = hikes.find(h => h.name === name);
+                h.marker = marker;
 
-            let newHikes = [];
-            const homePos = hike_info["home"]["latlng"];
-
-            // For each marker/track
-            // * Create a hike element in the hikes collection
-            // * Add eventlisteners for mouse interaction on map
-            map.eachLayer(marker => {
-                if (marker instanceof L.Marker && marker.options.title) {
-                    let name = marker.options.title;
-                    let h = {
-                        name: name,
-                        dist:(marker.getLatLng().distanceTo(homePos) / 1000).toFixed(1),
-                        marker:marker,
-                        info:name in hike_info["hikes"] ? hike_info["hikes"][name] : {
-                            display_name : name,
-                            rate : 0,
-                            comment : "",
-                        },
-                    }
-                    if (!(h.name in hike_info["hikes"])) {
-                        newHikes.push(h.info)
-                    }
-                    hikes.push(h);
-
-                    // hike UI /interaction
-                    if (!h.info.rate) {
-                        marker._icon.classList.add("not_visited");
-                    }
-                    marker.on('mouseover', function (mouseEvent) {
-                        let row = highlight(h);
-                        row.scrollIntoView({ behavior: 'instant', block: 'center' });
-                    });
-                    marker.on('mouseout', function (mouseEvent) {
-                        clear_hightlighted();
-                    });
+                // hike UI /interaction
+                if (!h.info.rate) {
+                    marker._icon.classList.add("not_visited");
                 }
-            });
-
-            if (newHikes.length > 0) {
-                console.log("New hikes : ", newHikes.length);
-                save_hikes(newHikes, res => {
-                    console.log("save_hikes : ", res);
-                })
             }
+        });
+
+        loaded_count += 1;
+
+        // If all files are loaded ...
+        if (loaded_count == count_to_load) {
+            console.log("All is loaded")
             sortTable(SORT_BY_DIST);
 
+            const total_hikes = hikes.length;
+            const total_visited = hikes.filter(h => h.info.rate).length;
 
+            $add($("top-bar"), "span").textContent = ` ${total_hikes} vandringar/leder, varav ${total_visited}  besökta (betygsatta). `;
+        }
+
+
+    })
+    .on('click', e => { handle_click(e.originalEvent); })
+    .addTo(map);
+}
+
+function setup() {
+    get("hike_info.json", hike_info => {
+        get("config.json", config => {
+
+            for(let l of config["links"]) {
+                $add($("top-bar"), "a", { "href" : l.href, "target":"_blank"}).textContent = l.name;
+                // Add space between top-bar elements
+                $add($("top-bar"), "span").textContent = " ";
+            }
+
+            const home = config["home"];
+            count_to_load = config["gpxFiles"].length;
+            loaded_count = 0;
+
+            var map = L.map('map');
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            for (let file_config of config["gpxFiles"]) {
+                let filename = file_config["filename"];
+                let options = file_config["options"];
+                load_gpx_file(map, home, filename, hike_info, options);
+            }
         })
-        .on('click', e => { handle_click(e.originalEvent); })
-        .addTo(map);
     });
 }
 
 function highlight(h) {
     highlighted = h;
-    h.marker._icon.classList.add('highlight_map');
+    if (h.marker) {
+        h.marker._icon.classList.add('highlight_map');
+    }
     let row = $("tr_" + h.name);
     row.classList.add('highlight_row');
+    for (let line of h.lines) line.setStyle({ weight: 8 });
+
     return row;
 }
 
-function clear_hightlighted() {
-    highlighted.marker._icon.classList.remove('highlight_map');
+function clear_highlighted() {
+    for (let line of highlighted.lines) line.setStyle({ weight: 3 });
+    if (highlighted.marker) {
+        highlighted.marker._icon.classList.remove('highlight_map');
+    }
     $("tr_" + highlighted.name).classList.remove('highlight_row');
 }
 
@@ -291,9 +332,14 @@ function setup_edit() {
     });
     let h = window.opener.selected;
 
+
     $('h_dist').textContent = h.dist + " km";
     $('h_name').value = h.info.display_name;
-    let latlng = h.marker.getLatLng();
+    if (h.link) {
+        $add($('h_link'), "a", { "href" : h.link, "target":"_blank"}).textContent = h.link;
+    }
+
+    let latlng = h.latlng;
     $add($('h_map_link'), "a", { "href" : `https://www.google.com/maps?q=${latlng.lat},${latlng.lng}`, "target":"_blank"}).textContent = latLngToDMS(latlng.lat, latlng.lng);
     const rateInputs = document.querySelectorAll("input[type='radio']");
     for (let input of rateInputs) {
@@ -304,7 +350,8 @@ function setup_edit() {
     }
     $('h_comment').value = h.info.comment;
     // Additional elements (i.e. may be undefined in the info)
-    $('h_length').value = h.info.hike_length !== undefined ? h.info.hike_length : "";
+    let hike_length = h.info.hike_length ? h.info.hike_length : h.computed_hike_length;
+    $('h_length').value = hike_length !== undefined ? hike_length.toFixed(1) : "";
     $('h_length').focus();
 }
 
