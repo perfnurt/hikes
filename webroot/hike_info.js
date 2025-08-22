@@ -124,7 +124,7 @@ function show_hikes_table() {
         $add(tr, "td").textContent = h.info ? h.info.display_name : h.name;
         $add(tr, "td").textContent = h.dist;
         $add(tr, "td").textContent = h.info.rate ? h.info.rate : "";
-        $add(tr, "td").textContent = h.info.hike_length ?  h.info.hike_length.toFixed(1) : (h.computed_hike_length ? h.computed_hike_length.toFixed(1) : "");
+        $add(tr, "td").textContent = h.info.hike_length ?  h.info.hike_length : (h.computed_hike_length ? h.computed_hike_length.toFixed(1) : "");
 
         tr.addEventListener('click', (e) => { handle_click(e); });
         tr.addEventListener('mouseover', () => { highlight(h); });
@@ -276,7 +276,7 @@ function setup() {
             const home_pos = config["home"]["latlng"];
             L.circle(home_pos, 
                 {
-                    radius:500,
+                    radius:1000,
                     color : 'black',
                     fillColor: 'lightblue',
                     fillOpacity: 0.8,
@@ -340,7 +340,7 @@ function handle_click(e) {
     selected = highlighted;
     const left = e.clientX;
     const top = e.clientY;
-    window.open("edit.html", 'Vandring', `width=800,height=400,left=${left},top=${top}`);
+    window.open("edit.html", 'Vandring', `width=800,height=460,left=${left},top=${top}`);
 }
 
 function save_hike(h, f) {
@@ -388,8 +388,8 @@ function setup_edit() {
     }
     $('h_comment').value = h.info.comment;
     // Additional elements (i.e. may be undefined in the info)
-    let hike_length = h.info.hike_length ? h.info.hike_length : h.computed_hike_length;
-    $('h_length').value = hike_length !== undefined ? hike_length.toFixed(1) : "";
+    let hike_length = h.info.hike_length ? h.info.hike_length : h.computed_hike_length.toFixed(1);
+    $('h_length').value = hike_length !== undefined ? hike_length : "";
     $('h_length').focus();
 }
 
