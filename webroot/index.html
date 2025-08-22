@@ -46,7 +46,8 @@
             background-color: lightcoral;
         }
         .highlight_map {
-            border: 2px solid blue;
+            border: 3px solid blue;
+            background: gray;
         }
         .not_visited {
             filter:  hue-rotate(120deg) opacity(60%);
@@ -63,14 +64,14 @@
 
     </style>
 </head>
-<body onload="setup_map()">
-    <div id="top-bar">
-    </div>
+<body onload="setup()">
+    <div id="top-bar"></div>
+    <div id="hike-summary"></div>
+    <div id="hike-sets"></div>
     <!-- Filter box to the right -->
     <div id="filter-box">
         <input type="text" id="filter" onkeyup="show_hikes_table()" placeholder="Filter ...">
     </div>
-
     <div id="container">
         <div id="map"></div>
         <div id="table-container">

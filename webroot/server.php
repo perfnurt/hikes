@@ -34,14 +34,7 @@ function resolve_request() {
     switch($op) {
           case "save_hike_info":
             $fileData = readHikeInfoFile();
-            $fileData["hikes"][$data->name] = $data->hike_info;
-            writeHikeInfoFile($fileData);
-            return "OK";
-        case "save_hikes_info":
-            $fileData = readHikeInfoFile();
-            foreach ($data->hikes as $h) {
-                $fileData["hikes"][$h->display_name] = $h;
-            }
+            $fileData[$data->name] = $data->hike_info;
             writeHikeInfoFile($fileData);
             return "OK";
         default:
