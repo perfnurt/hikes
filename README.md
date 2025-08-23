@@ -93,13 +93,14 @@ It is updated by invoking `server.php`.
 ## GPX structure
 * The GPX files should use `trk` as the means of defining the hikes (i.e. not using `rte` or `wpt`).  
 * Each track should have a name defined in the trk/name element. 
-* If the trk has the (optional) href attribute, the link is displayed when showing the details of the hike.
+* If the trk has the (optional) link element, the link is displayed when showing the details of the hike.
 
 Example:
 ``` xml
 <gpx>
-    <trk href="https://example.com/hike1">
+    <trk>
         <name>Hike 1</name>
+        <link href="https://example.com/hike1" />
         <trkseg>
             <trkpt lat="55.70584" lon="13.19321"></trkpt>
             <trkpt lat="55.70600" lon="13.19400"></trkpt>
