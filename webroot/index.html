@@ -61,10 +61,52 @@
             border-radius: 1px;
             box-shadow: 0;
         }
+        #location-btn, #toggle-table-btn, #home-btn {
+            position: fixed;
+            bottom: 20px;
+            background-color: white;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 20px;
+        }
+        #location-btn {
+            left: 70px;
+        }
+        #home-btn {
+            left: 20px;
+        }
+        #toggle-table-btn {
+            left: 120px;
+        }
+        #location-btn:hover, #toggle-table-btn:hover, #home-btn:hover {
+            background-color: #f0f0f0;
+        }
+        #table-container.hidden {
+            display: none;
+        }
 
     </style>
+    <script>
+        function toggleTable() {
+            do_show_hikes_table = !do_show_hikes_table;
+            const tableContainer = document.getElementById('table-container');
+            if (do_show_hikes_table) {
+                tableContainer.classList.remove('hidden');
+                show_hikes_table();
+            } else {
+                tableContainer.classList.add('hidden');
+            }
+        }
+    </script>
 </head>
 <body onload="setup()">
+    <button id="home-btn" onclick="centerMapOnHome()" title="Centrera karta på hem">🏠</button>
+    <button id="location-btn" onclick="centerMapOnLocation()" title="Centrera karta på min position">📍</button>
+    <button id="toggle-table-btn" onclick="toggleTable()" title="Visa/dölj lista">📋</button>
     <div id="top-bar"></div>
     <div id="hike-summary"></div>
     <div id="hike-sets"></div>
