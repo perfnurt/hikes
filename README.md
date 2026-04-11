@@ -1,6 +1,6 @@
 # Hikes
 
-This is a web app that, based on .gpx files, allows you to manage and view hiking trails. It provides a simple interface to visualize hikes on a map, log comments, ratings, and other information about the hikes.
+This is a web app that, based on .gpx files (provided separately, not part of this project), allows you to manage and view hiking trails. It provides a simple interface to visualize hikes on a map, log comments, ratings, and other information about the hikes.
 It:
 * Displays a map with tracks/hikes
 * Shows a corresponding table/list of the hikes
