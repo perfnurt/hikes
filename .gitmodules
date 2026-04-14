@@ -1,0 +1,3 @@
+[submodule "deploy-script"]
+	path = deploy-script
+	url = https://github.com/perfnurt/deploy-script.git
