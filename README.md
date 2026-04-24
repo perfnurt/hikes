@@ -13,6 +13,7 @@ It:
 # Dependencies
 * [leaflet](https://leafletjs.com/) and [leaflet-gpx](https://github.com/mpetazzoni/leaflet-gpx) are used for resolving .gpx file info and displaying map.
 * PHP used for server side commands.
+* Deployment to host [lftp](https://lftp.yar.ru/) for FTP file transfer.
 
 ## config.json
 File holding the apps's static configuration. It is structured like,
