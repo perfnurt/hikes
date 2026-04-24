@@ -18,6 +18,8 @@ var selected;
 // The hikes collection holds hike elements tying the hike info and layers/markers/lines together.
 // Order of the elements determines the order displayed in the table.
 var hikes = []
+var map; // Global map reference
+var home_pos; // Global home position reference
 
 const SORT_BY_NAME = 0;
 const SORT_BY_DIST = 1;
@@ -89,7 +91,15 @@ function sort_hikes(sort_by_) {
     });
 }
 
+let do_show_hikes_table = true;
+
 function show_hikes_table() {
+
+    if (!do_show_hikes_table) {
+        return;
+    }
+
+
 
     // text input with id "filter" holds the filter string
     let filter = $("filter").value.toLowerCase();
@@ -266,14 +276,14 @@ function setup() {
             count_to_load = config["gpxFiles"].length;
             loaded_count = 0;
 
-            var map = L.map('map');
+            map = L.map('map');
 
             // Add OpenStreetMap tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            const home_pos = config["home"]["latlng"];
+            home_pos = config["home"]["latlng"];
             L.circle(home_pos, 
                 {
                     radius:1000,
@@ -333,6 +343,29 @@ function clear_highlighted() {
 function sortTable(sort_order_) {
     sort_hikes(sort_order_);
     show_hikes_table();
+}
+
+function centerMapOnLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const latlng = [position.coords.latitude, position.coords.longitude];
+                map.panTo(latlng);
+            },
+            error => {
+                console.error('Geolocation error:', error);
+                alert('Kunde inte hämta din position');
+            }
+        );
+    } else {
+        alert('Geolocation stöds inte av din webbläsare');
+    }
+}
+
+function centerMapOnHome() {
+    if (home_pos) {
+        map.panTo(home_pos);
+    }
 }
 
 function handle_click(e) {
