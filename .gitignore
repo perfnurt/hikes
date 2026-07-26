@@ -3,6 +3,6 @@
 # Local copy of https://github.com/mpetazzoni/leaflet-gpx/blob/main/gpx.js
 # Refer to dist when it has been updated with my PR
 gpx.js
-deploy_config.sh
+.deploy-config-*.sh
 
 __pycache__/
